@@ -56,7 +56,7 @@ class Ndex2(object):
                            header sent with all requests to server
         :type user_agent: string
         :param timeout: The timeout in seconds value for requests to server. This value
-                        is passed to Request calls `Click here for more information
+                        is passed to Request calls `Click Here for more information
                         <http://docs.python-requests.org/en/master/user/advanced/#timeouts>`_
         :type timeout: float or tuple(float, float)
         """
@@ -318,9 +318,40 @@ class Ndex2(object):
 
     def save_new_network(self, cx, visibility=None):
         """
-        Create a new network (cx) on the server
 
-        :param cx: Network cx
+        Create a new network (cx) on the server
+       
+	 .. code-block:: python
+		
+		from ndex2.nice_cx_network import NiceCXNetwork
+		import ndex2.client
+		my_account="your account"
+		my_password="your password"
+		my_ndex=ndex2.client.Ndex2("http://public.ndexbio.org", my_account, my_password)
+
+		#Directly creates a single node network to upload
+		my_net = NiceCXNetwork()
+		my_net.create_node('testnode1')
+		my_net.set_name('testnetwork')
+		uri_subset = my_ndex.save_new_network(my_net.to_cx())
+
+		#this method return the URI of the subset
+		uri_subset = my_ndex.save_new_network(query_result_cx)
+
+		#find the subset UUID
+		uuid_subset = uri_subset.rpartition('/')[-1]
+
+		print ("URI of the subset is: ", uri_subset)
+		print ("UUID of the subset is: ", uuid_subset)
+
+		new_summary = my_ndex.get_network_summary(uuid_subset)
+		if new_summary.get("isValid"):
+		    print("New network has been validated by the server.")
+		else:
+		    print("failed")
+		print(new_summary)
+        
+	:param cx: Network cx
         :type cx: list of dicts
         :param visibility: Sets the visibility (PUBLIC or PRIVATE)
         :type visibility: string
@@ -354,6 +385,23 @@ class Ndex2(object):
     def save_cx_stream_as_new_network(self, cx_stream, visibility=None):
         """
         Create a new network from a CX stream.
+	
+	.. code-block:: python
+	
+		from ndex2.nice_cx_network import NiceCXNetwork
+		import ndex2.client
+		my_account="your account"
+		my_password="your password"
+		my_ndex=ndex2.client.Ndex2("http://public.ndexbio.org", my_account, my_password)
+
+		#Directly creates a single node network to upload
+		my_net = NiceCXNetwork()
+		my_net.create_node('testnode1')
+		my_net.set_name('testnetwork')
+		uri_subset = my_ndex.save_new_network(my_net.to_cx())
+		
+		#visibility is either PUBLIC or PRIVATE
+		my_ndex.save_cx_stream_as_new_network(query_result_cx_stream, visibility=PUBLIC)
 
         :param cx_stream:  IO stream of cx
         :type cx_stream: BytesIO
@@ -391,6 +439,17 @@ class Ndex2(object):
     def update_cx_network(self, cx_stream, network_id):
         """
         Update the network specified by UUID network_id using the CX stream cx_stream.
+	
+	.. code-block:: python
+
+		import ndex2.client
+		my_account="your account"
+		my_password="your password"
+		my_ndex=ndex2.client.Ndex2("http://public.ndexbio.org", my_account, my_password)
+
+		cx_stream = 'INSERT CX STREAM HERE'
+		network_id = 'INSERT NETWORK UUID HERE'
+		my_ndex.update_cx_network(cx_stream, network_id)
 
         :param cx_stream: The network stream.
         :param network_id: The UUID of the network.
@@ -414,7 +473,43 @@ class Ndex2(object):
 
     def get_network_as_cx_stream(self, network_id):
         """
+
         Get the existing network with UUID network_id from the NDEx connection as a CX stream.
+
+	.. code-block:: python
+
+		import ndex2.client
+
+		my_account="your account"
+		my_password="your password"
+		my_ndex=ndex2.client.Ndex2("http://public.ndexbio.org", my_account, my_password)
+
+		#this method returns the network specified by network_id as a CX byte stream
+		response = my_ndex.get_network_as_cx_stream('INSERT NETWORK UUID HERE')
+
+		#this returns a json object, which is a list of dict
+		raw_cx = response.json()
+
+		#the code below copied for the v2.0 Tutorial. 
+		print("Received %s characters of CX" % len(response.content))
+
+		def getNumberOfNodesAndEdgesFromCX(cx):
+		    numberOfEdges = numberOfNodes = 0;
+		    for aspect in cx:
+			if 'nodes' in aspect:
+			    numberOfNodes = len(aspect['nodes'])
+			if 'metaData' in aspect:
+			    metaData = aspect['metaData']
+			    for element in metaData:
+				if (('name' in element) and (element['name'] == 'nodes')):
+				    numberOfNodes = element.get('elementCount')
+				if (('name' in element) and (element['name'] == 'edges')):
+				    numberOfEdges = element.get('elementCount')
+			    break
+		    return numberOfNodes, numberOfEdges
+		
+		nodes, edges = getNumberOfNodesAndEdgesFromCX(raw_cx)
+		print("network contains %s nodes and %s edges." % (nodes, edges))
 
         :param network_id: The UUID of the network.
         :type network_id: str
@@ -451,8 +546,27 @@ class Ndex2(object):
 
     def get_neighborhood_as_cx_stream(self, network_id, search_string, search_depth=1, edge_limit=2500, error_when_limit=True):
         """
+
         Get a CX stream for a subnetwork of the network specified by UUID network_id and a traversal of search_depth
         steps around the nodes found by search_string.
+
+        .. code-block:: python
+
+		import ndex2.client
+
+		my_account="your account"
+		my_password="your password"
+		my_ndex=ndex2.client.Ndex2("http://public.ndexbio.org", my_account, my_password)
+
+
+		network_uuid = 'INSERT NETWORK UUID HERE'
+		server = 'public.ndexbio.org'
+		nice_cx_network = ndex2.create_nice_cx_from_server(server=server, uuid=network_uuid)
+		for node_id, node in nice_cx_network.get_nodes():
+		    query_result_cx_stream = my_ndex.get_neighborhood_as_cx_stream(network_uuid, node['n'])
+		    raw_cx = query_result_cx_stream.json()
+		    print(raw_cx)
+		    #Note: This command is only if you want the cx stream from every single neighborhood, which probably won't happen. Don't use this if your network has more than 50 nodes because
 
         :param network_id: The UUID of the network.
         :type network_id: str
@@ -482,8 +596,33 @@ class Ndex2(object):
 
     def get_neighborhood(self, network_id, search_string, search_depth=1, edge_limit=2500):
         """
+
         Get the CX for a subnetwork of the network specified by UUID network_id and a traversal of search_depth steps
         around the nodes found by search_string.
+
+        .. code-block:: python
+
+		
+		from ndex2.nice_cx_network import NiceCXNetwork
+		import ndex2.client
+		my_account="your account"
+		my_password="your password"
+		my_ndex=ndex2.client.Ndex2("http://public.ndexbio.org", my_account, my_password)
+
+		my_net = NiceCXNetwork()
+		my_net.create_node('testnode1')
+		my_net.set_name('testnetwork')
+		uri_subset = my_ndex.save_new_network(my_net.to_cx())
+
+		#find out the number of nodes and edges in the subset
+		for aspect in query_result_cx:
+		    if 'nodes' in aspect:
+			number_of_nodes = len(aspect['nodes'])
+		    if 'edges' in aspect:
+			number_of_edges = len(aspect['edges'])
+
+		print("Query result network contains %s nodes and %s edges." % (number_of_nodes, number_of_edges))
+
 
         :param network_id: The UUID of the network.
         :type network_id: str
@@ -581,8 +720,27 @@ class Ndex2(object):
 
     def search_networks(self, search_string="", account_name=None, start=0, size=100, include_groups=False):
         """
+
         Search for networks based on the search_text, optionally limited to networks owned by the specified
         account_name.
+
+        .. code-block:: python
+
+		import ndex2.client
+		my_account="your account"
+		my_password="your password"
+		my_ndex=ndex2.client.Ndex2("http://public.ndexbio.org", my_account, my_password)
+
+
+		#search network by key word 'tutorial', return a list of networks with network summary
+		list_networks=my_ndex.search_networks('INSERT KEY WORD HERE')
+
+		print("%s netwoks found." % (len(list_networks)))
+		print ("Network names and uuids:")
+
+		for i in list_networks.get('networks'): 
+		    print( "%s -->> %s" % (i.get('name'), i.get('externalId')))
+
 
         :param search_string: The text to search for.
         :type search_string: str
@@ -638,6 +796,46 @@ class Ndex2(object):
         """
         Gets information about a network.
 
+        .. code-block:: python
+
+		import ndex2.client
+		my_account="your account"
+		my_password="your password"
+		my_ndex=ndex2.client.Ndex2("http://public.ndexbio.org", my_account, my_password)
+
+
+		new_summary=my_ndex.get_network_summary('INSERT NETWORK UUID HERE')
+		 
+		if new_summary.get("isValid"):
+			print("New network has been validated by the server.")
+		else:
+		    print("failed")
+		    
+		# display the network summary as a table
+		def summary2table(object):
+		    table = "<table>"
+		    for key, value in object.items():
+			if key == "warnings":
+			    warning_list = ""
+			    for warning in value:
+				warning_list += "%s<br>" % warning
+			    value = warning_list
+			if key == "properties":
+			    property_table = "<table>"
+			    for property in value:
+				property_table += "<tr>"
+				property_table += "<td>%s</td><td>%s</td>" % (property.get("predicateString"), property.get("value"))
+				property_table += "</tr>"
+			    property_table += "</table>"
+			    value = property_table
+			table += "<tr>"
+			table += "<td>%s</td><td>%s</td>" % (key, value)
+			table += "</tr>"
+		    table += "</table>"
+		    return table
+
+		HTML(summary2table(new_summary))
+
         :param network_id: The UUID of the network.
         :type network_id: str
         :return: Summary
@@ -653,7 +851,24 @@ class Ndex2(object):
 
     def make_network_public(self, network_id):
         """
+
         Makes the network specified by the network_id public.
+
+        .. code-block:: python
+
+		import ndex2.client
+		my_account="your account"
+		my_password="your password"
+		my_ndex=ndex2.client.Ndex2("http://public.ndexbio.org", my_account, my_password)
+
+
+
+		network_id = "INSERT NETWORK UUID HERE"
+		my_ndex.make_network_public("network_id")
+
+		#the following methods check the visibility of the network
+		my_ndex.make_network_public(network_id)
+		my_ndex.get_network_summary(network_id).get('visibility')
 
         :param network_id: The UUID of the network.
         :type network_id: str
@@ -691,7 +906,24 @@ class Ndex2(object):
 
     def make_network_private(self, network_id):
         """
+
         Makes the network specified by the network_id private.
+
+        .. code-block:: python
+
+		import ndex2.client
+		my_account="your account"
+		my_password="your password"
+		my_ndex=ndex2.client.Ndex2("http://public.ndexbio.org", my_account, my_password)
+
+
+		network_id = "INSERT NETWORK UUID HERE"
+		my_ndex.make_network_private(network_id)
+
+		#the following methods check the visibility of the network
+		new_summary = my_ndex.get_network_summary(network_id)
+		print(new_summary.get('visibility'))
+
 
         :param network_id: The UUID of the network.
         :type network_id: str
@@ -709,6 +941,18 @@ class Ndex2(object):
         """
         Retrieves a task by id
 
+	.. code-block:: python
+
+		import ndex2.client
+		my_account="your account"
+		my_password="your password"
+		my_ndex=ndex2.client.Ndex2("http://public.ndexbio.org", my_account, my_password)
+
+
+		task_id = 'INSERT TASK ID HERE'
+		task = my_ndex.get_task_by_id(task_id)
+		print(task)
+
         :param task_id: Task id
         :type task_id: string
         :raises NDExUnauthorizedError: If credentials are invalid or not set
@@ -720,8 +964,34 @@ class Ndex2(object):
         return self.get(route)
 
     def delete_network(self, network_id, retry=5):
-        """
+        """            
+
         Deletes the specified network from the server
+
+        .. code-block:: python
+  
+  		from ndex2.nice_cx_network import NiceCXNetwork
+		import ndex2.client
+		my_account="your account"
+		my_password="your password"
+		my_ndex=ndex2.client.Ndex2("http://public.ndexbio.org", my_account, my_password)
+
+		#find the subset uuid
+		uri_subset = my_ndex.save_new_network(query_result_cx)
+		uuid_subset = uri_subset.rpartition('/')[-1]
+
+		#get all the network ids in my account, this method returns a list of uuids
+		list_uuid = my_ndex.get_network_ids_for_user("ENTER YOUR USERNAME HERE")
+
+		# using a loop to go though the list of uuids, 
+		#and delete all the networks except the subset just queried
+		indexval = 0
+		for i in range(len(list_uuid)):
+		    if (list_uuid[indexval] != uuid_subset):
+			my_ndex.delete_network(list_uuid[indexval])  
+		    else:
+			print("URI of the newly created network %s is %s" % (uuid_subset, uri_subset))
+		    indexval += 1
 
         :param network_id: Network id
         :type network_id: string
@@ -749,7 +1019,18 @@ class Ndex2(object):
 
     def get_provenance(self, network_id):
         """
+
         Gets the network provenance
+
+        .. code-block:: python
+         
+		import ndex2.client
+		my_account="your account"
+		my_password="your password"
+		my_ndex=ndex2.client.Ndex2("http://public.ndexbio.org", my_account, my_password)
+
+
+            my_ndex.get_provenance('INSERT NETWORK UUID HERE') 
 
         .. warning::
 
@@ -793,7 +1074,26 @@ class Ndex2(object):
 
     def set_read_only(self, network_id, value):
         """
+
         Sets the read only flag on the specified network
+
+        .. code-block:: python
+
+		import ndex2.client
+		my_account="your account"
+		my_password="your password"
+		my_ndex=ndex2.client.Ndex2("http://public.ndexbio.org", my_account, my_password)
+
+
+		network_id = 'INSERT NETWORK UUID'
+
+		#set network to read only
+		my_ndex.set_read_only(network_id, True)
+
+		#revert network to read-write 
+		my_ndex.set_read_only(network_id, False)
+		new_summary = my_ndex.get_network_summary(network_id)
+		print("The read only status has been reverted to %s" % new_summary.get('isReadOnly'))
 
         :param network_id: Network id
         :type network_id: string
@@ -809,6 +1109,23 @@ class Ndex2(object):
     def set_network_properties(self, network_id, network_properties):
         """
         Sets network properties
+	
+	.. code-block:: python
+
+		import ndex2.client
+		my_account="your account"
+		my_password="your password"
+		my_ndex=ndex2.client.Ndex2("http://public.ndexbio.org", my_account, my_password)
+
+
+		network_id = 'INSERT NETWORK UUID HERE'
+
+		#the preoperties are set as a list of value pairs
+		network_properties = [("isReadOnly",True),
+				      ("visibility","PUBLIC"),
+				      ("isShowcase",True)]
+
+		my_ndex.set_network_properties(network_id, network_properties)
 
         :param network_id: Network id
         :type network_id: string
@@ -828,19 +1145,6 @@ class Ndex2(object):
             raise Exception("network_properties must be a string or a list of NdexPropertyValuePair objects")
         return self.put(route, put_json)
 
-    def get_sample_network(self, network_id):
-        """
-        Gets the sample network
-
-        :param network_id: Network id
-        :type network_id: string
-        :raises NDExUnauthorizedError: If credentials are invalid or not set
-        :return: Sample network
-        :rtype: list of dicts in cx format
-        """
-        route = "/network/%s/sample" % network_id
-        return self.get(route)
-
     def set_network_sample(self, network_id, sample_cx_network_str):
         """
 
@@ -857,6 +1161,28 @@ class Ndex2(object):
     def set_network_system_properties(self, network_id, network_properties):
         """
         Set network system properties
+	
+	.. code-block:: python
+
+		import ndex2.client
+		my_account="your account"
+		my_password="your password"
+		my_ndex=ndex2.client.Ndex2("http://public.ndexbio.org", my_account, my_password)
+
+
+		network_id = 'INSERT NETWORK UUID HERE'
+
+		#check the network properties before set value
+		print(my_ndex.get_network_summary(network_id))
+
+		#the preoperties are set as a dict of value pairs
+		network_properties = {"readOnly":False, 
+				      "visibility":"PUBLIC", 
+				      "showcase":False}
+		my_ndex.set_network_system_properties(network_id, network_properties)
+
+		#check the network properties after set value	
+		print(my_ndex.get_network_summary(network_id))
 
         :param network_id: Network id
         :type network_id: string
@@ -878,10 +1204,28 @@ class Ndex2(object):
 
     def update_network_profile(self, network_id, network_profile):
         """
+
         Updates the network profile
         Any profile attributes specified will be updated but attributes that are not specified will
         have no effect - omission of an attribute does not mean deletion of that attribute.
         The network profile attributes that can be updated by this method are: 'name', 'description' and 'version'.
+
+        .. code-block:: python
+
+		import ndex2.client
+		my_account="your account"
+		my_password="your password"
+		my_ndex=ndex2.client.Ndex2("http://public.ndexbio.org", my_account, my_password)
+
+
+		#note: cannot use this method to update visibility，
+		#Please use make_network_public/private function to set network visibility.
+		#Also can use set_network_properties() to set visibility
+		network_id = "INSERT NETWORK UUID HERE"
+		network_profile={"name":"My Network", 
+				 "description":"learn from Tutorial"}
+		my_ndex.update_network_profile(network_id, network_profile)   
+
 
         :param network_id: Network id
         :type network_id: string
@@ -919,6 +1263,19 @@ class Ndex2(object):
         """
         Updated group permissions
 
+	.. code-block:: python
+
+		import ndex2.client
+		my_account="your account"
+		my_password="your password"
+		my_ndex=ndex2.client.Ndex2("http://public.ndexbio.org", my_account, my_password)
+
+
+		groupid = 'INSERT USER ID HERE'
+		networkid = 'INSERT NETWORK UUID HERE'
+		#permission can be changed to other things
+		my_ndex.update_network_group_permission(groupid, networkid, permission='READ')
+
         :param groupid: Group id
         :type groupid: string
         :param networkid: Network id
@@ -934,6 +1291,19 @@ class Ndex2(object):
     def update_network_user_permission(self, userid, networkid, permission):
         """
         Updated network user permission
+	
+	.. code-block:: python
+	
+		import ndex2.client
+		my_account="your account"
+		my_password="your password"
+		my_ndex=ndex2.client.Ndex2("http://public.ndexbio.org", my_account, my_password)
+
+
+		userid = 'INSERT USER ID HERE'
+		networkid = 'INSERT NETWORK UUID HERE'
+		#permission can be changed to other things
+		my_ndex.update_network_user_permission(userid, networkid, permission='READ'
 
         :param userid: User id
         :type userid: string
@@ -950,6 +1320,26 @@ class Ndex2(object):
     def grant_networks_to_group(self, groupid, networkids, permission="READ"):
         """
         Set group permission for a set of networks
+	
+	.. code-block:: python
+
+		import ndex2.client
+		my_account="your account"
+		my_password="your password"
+		my_ndex=ndex2.client.Ndex2("http://public.ndexbio.org", my_account, my_password)
+
+
+		#find the group id by the username
+		user = "INSERT YOUR USERNAME HERE"
+		group_ids = [g.gr_gid for g in grp.getgrall() if user in g.gr_mem]
+		gid = pwd.getpwnam(user).pw_gid
+		group_ids.append(grp.getgrgid(gid).gr_gid)
+		print (group_ids)
+
+		group_id = group_ids[0]
+		network_ids = 'ENTER THE NETWORK ID HERE'
+		#permission can be changed to edit
+		my_ndex.grant_networks_to_group(group_id, network_ids, permission=READ)
 
         :param groupid: Group id
         :type groupid: string
@@ -965,7 +1355,35 @@ class Ndex2(object):
 
     def get_user_by_username(self, username):
         """
+
         Gets the user id by user name
+
+        .. code-block:: python
+
+		import ndex2.client
+		my_account="your account"
+		my_password="your password"
+		my_ndex=ndex2.client.Ndex2("http://public.ndexbio.org", my_account, my_password)
+
+
+		print("Please enter your user name:")
+		name = input()
+
+		#this method returns the user information as a dict
+		user_aspect = my_ndex.get_user_by_username(name)
+
+		#get the key and the value in the dict as two lists
+		user_info = list(user_aspect.keys()) 
+		user_value = list(user_aspect.values()) 
+
+		print(" User information including: ",user_info)
+		print(" Value are:", user_value)
+
+		#find the corrsponding value in the dict by the key
+		firstname = user_aspect["firstName"]
+		lastname = user_aspect["lastName"]
+
+		print(" User ", name, " first name is ", firstname, " and last name is ",lastname)
 
         :param username: User name
         :type username: string
@@ -991,6 +1409,21 @@ class Ndex2(object):
         Get a list of network summaries for networks owned by specified user.
         It returns not only the networks that the user owns but also the networks that are
         shared with them directly.
+
+	.. code-block:: python
+	
+		import ndex2.client
+		my_account="your account"
+		my_password="your password"
+		my_ndex=ndex2.client.Ndex2("http://public.ndexbio.org", my_account, my_password)
+
+
+		username = "ENTER YOUR USER"
+		#offset is how far you start looking for user network summaries
+		#limit is the most networks you want to see
+
+		#the following code shows the summaries of the second to last and the third to last networks in my account 
+		my_ndex.get_user_network_summaries(username, offset=1, limit=2)
 
         :param username: the username of the network owner
         :type username: str
@@ -1021,7 +1454,37 @@ class Ndex2(object):
 
     def get_network_ids_for_user(self, username):
         """
+
         Get the network uuids owned by the user
+
+        .. code-block:: python
+
+		import ndex2.client
+		my_account="your account"
+		my_password="your password"
+		my_ndex=ndex2.client.Ndex2("http://public.ndexbio.org", my_account, my_password)
+
+		#For all networks in the current account, display a list of newtwork summaries 
+		#network_list = my_ndex.get_network_summaries_for_user("ENTER YOUR USERNAME HERE")
+		network_list = my_ndex.get_network_summaries_for_user("ENTER YOUR USERNAME HERE")
+
+		#below is an empty array to store all uuids of the networks
+		uuid_list = []
+
+		#this for loop find the uuid for each network 
+		for i in range(len(network_list)):
+		    #network_list[i] is each network summary, which is a dict
+		    #network_list[i]['externalId'] is finding the corrsponding uuid in the dict by the key 'externalId'
+		    #.append is adding this uuid to the uuid_list
+		    uuid_list.append(network_list[i]['externalId'])
+		    
+		print ("uuid list:", uuid_list)
+
+		#You may find that this method returns the same result as 
+		#the sample under the method get_network_summaries_for_user(account_name)
+
+		#list_uuid = my_ndex.get_network_ids_for_user("ENTER YOUR USERNAME HERE")
+		my_ndex.get_network_ids_for_user("ENTER YOUR USERNAME HERE")
 
         :param username: users NDEx username
         :type username: str
@@ -1034,6 +1497,17 @@ class Ndex2(object):
     def grant_network_to_user_by_username(self, username, network_id, permission):
         """
         Grants permission to network for the given user name
+
+	.. code-block:: python
+		
+		import ndex2.client
+		my_account="your account"
+		my_password="your password"
+		my_ndex=ndex2.client.Ndex2("http://public.ndexbio.org", my_account, my_password)
+
+		username = "INSERT USERNAME HERE"
+		network_id = 'INSERT NETWORK UUID HERE'
+		my_ndex.grant_network_to_user_by_username(username, network_id, permission = "READ")
 
         :param username: User name
         :type username: string
@@ -1051,6 +1525,17 @@ class Ndex2(object):
         """
         Gives read permission to specified networks for the provided user
 
+	.. code-block:: python
+
+		import ndex2.client
+		my_account="your account"
+		my_password="your password"
+		my_ndex=ndex2.client.Ndex2("http://public.ndexbio.org", my_account, my_password)
+
+		userid = 'INSERT USERNAME HERE'
+		networkids = 'INSERT NETWORK UUID HERE'
+		my_ndex.grant_networks_to_user(userid, networkids, permission="READ")	
+
         :param userid: User id
         :type userid: string
         :param networkids: Network ids
@@ -1065,7 +1550,27 @@ class Ndex2(object):
 
     def update_status(self):
         """
+
         Updates the admin status
+
+        .. code-block:: python
+
+		import ndex2.client
+		my_account="your account"
+		my_password="your password"
+		my_ndex=ndex2.client.Ndex2("http://public.ndexbio.org", my_account, my_password)
+
+            try:
+                my_ndex=nc.Ndex2("http://public.ndexbio.org", my_account, my_password)
+                my_ndex.update_status()
+            
+                networks = my_ndex.status.get("networkCount")
+                users = my_ndex.status.get("userCount")
+                groups = my_ndex.status.get("groupCount")
+                print("my_ndex client: %s networks, %s users, %s groups" % (networks, users, groups))
+            except Exception as inst:
+                print("Could not access account %s with password %s" % (my_account, my_password))
+                print(inst.args)
 
         :return: None (however the status is stored in the client object self.status)
         :rtype:
@@ -1076,6 +1581,26 @@ class Ndex2(object):
     def create_networkset(self, name, description):
         """
         Creates a new network set
+
+	.. code-block:: python
+
+		import ndex2.client
+		my_account="your account"
+		my_password="your password"
+		my_ndex=ndex2.client.Ndex2("http://public.ndexbio.org", my_account, my_password)
+
+		#create an empty network set in my account set_name is unique. The following code can only run once. 
+		#You have to change the set name if want to retry the code
+		set_name = "MyNetworks"
+		set_description = "a network set including all networks under my username"
+
+		#uri_myset is the URI of the set, 
+		#the format is like http://public.ndexbio.org/v2/networkset/e1310fdf-ba66-11e9-8bb4-0ac135e8bacf
+		uri_myset = my_ndex.create_networkset(set_name, set_description)
+
+		#set_id is the set id, you can add a network to the set by the set id
+		set_id = uri_myset.rpartition('/')[-1]
+		print(set_id)
 
         :param name: Network set name
         :type name: string
@@ -1090,7 +1615,24 @@ class Ndex2(object):
     def get_network_set(self, set_id):
         """
         Gets the network set information including the list of networks
+	
+	.. code-block:: python
 
+		import ndex2.client
+		my_account="your account"
+		my_password="your password"
+		my_ndex=ndex2.client.Ndex2("http://public.ndexbio.org", my_account, my_password)
+
+		set_id = 'INSERT SET UUID HERE'
+
+		#this method returns a dict of the set information
+		network_set = my_ndex.get_network_set(set_id)
+
+		#find the list of network ids in the set 
+		networks_in_the_set = network_set['networks']
+
+		print(networks_in_the_set)
+				
         :param set_id: network set id
         :type set_id: basestring
         :return: network set information
@@ -1103,6 +1645,20 @@ class Ndex2(object):
     def add_networks_to_networkset(self, set_id, networks):
         """
         Add networks to a network set.  User must have visibility of all networks being added
+	
+	.. code-block:: python
+
+		import ndex2.client
+		my_account="your account"
+		my_password="your password"
+		my_ndex=ndex2.client.Ndex2("http://public.ndexbio.org", my_account, my_password)
+
+		set_id = 'INSERT SET UUID HERE'
+
+		#the following codes return all the network ids in my account as a list
+		#then add the networks in the list to the set
+		my_networks = my_ndex.get_network_ids_for_user("ENTER YOUR USER")
+		my_ndex.add_networks_to_networkset(set_id, my_networks)
 
         :param set_id: network set id
         :type set_id: basestring
@@ -1120,6 +1676,31 @@ class Ndex2(object):
     def delete_networks_from_networkset(self, set_id, networks, retry=5):
         """
         Removes network(s) from a network set.
+	
+	.. code-block:: python
+
+		import ndex2.client
+		my_account="your account"
+		my_password="your password"
+		my_ndex=ndex2.client.Ndex2("http://public.ndexbio.org", my_account, my_password)
+
+		set_id = 'INSERT SET UUID HERE'
+
+		#get information of the set, this method returns a dict 
+		network_set = my_ndex.get_network_set(set_id)
+		#find the list of networks in the set 
+		networks_in_the_set = network_set['networks']
+
+		#find the number of networks in the set
+		#print (len(networks_in_the_set))
+
+		#try to delete only the first and the third networks in the list from the set
+		delete_networks = []
+		delete_networks.append(networks_in_the_set[0]) 
+		delete_networks.append(networks_in_the_set[2])
+		    
+		#print(delete_networks)
+		my_ndex.delete_networks_from_networkset(set_id, delete_networks)
 
         :param set_id: network set id
         :type set_id: basestring
@@ -1151,6 +1732,31 @@ class Ndex2(object):
                 else:
                     raise inst
         raise Exception("Network is locked after " + str(retry) + " retry.")
+
+    def get_sample_network(self, network_id):
+        """
+        Gets the sample network
+
+	.. code-block:: python
+	
+		import ndex2.client
+		my_account="your account"
+		my_password="your password"
+		my_ndex=ndex2.client.Ndex2("http://public.ndexbio.org", my_account, my_password)
+
+		network_id = 'INSERT NETWORK UUID HERE'
+		sample_network = my_ndex.get_sample_network(network_id)
+		print(sample_network)
+
+        :param network_id: Network id
+        :type network_id: string
+        :raises NDExUnauthorizedError: If credentials are invalid or not set
+        :return: Sample network
+        :rtype: list of dicts in cx format
+        """
+        route = "/network/%s/sample" % network_id
+        return self.get(route)
+
 
 
 class DecimalEncoder(json.JSONEncoder):
